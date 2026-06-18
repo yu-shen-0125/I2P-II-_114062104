@@ -1,0 +1,5 @@
+ubgi
+isready
+position startpos moves b1c3 d6e4 c3a4 b5a4
+go depth 1
+
