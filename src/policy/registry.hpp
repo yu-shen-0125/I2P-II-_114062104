@@ -1,11 +1,6 @@
 #pragma once
 /*============================================================
  * Algorithm Registry
- *
- * Each algorithm defines:
- *   - search() function
- *   - default_params() returning ParamMap
- *   - param_defs() for UCI option advertisement
  *============================================================*/
 
 #include <string>
@@ -14,7 +9,6 @@
 #include "search_types.hpp"
 #include "game_history.hpp"
 #include "minimax.hpp"
-#include "alphabeta.hpp"
 #include "random.hpp"
 
 struct AlgoEntry {
@@ -28,18 +22,10 @@ inline const std::vector<AlgoEntry>& get_algo_table(){
     static const std::vector<AlgoEntry> table = {
         {
             "minimax",
-            AlphaBeta::default_params(),
-            AlphaBeta::param_defs(),
+            MiniMax::default_params(),
+            MiniMax::param_defs(),
             [](State* s, int d, GameHistory& h, SearchContext& c){
-                return AlphaBeta::search(s, d, h, c);
-            }
-        },
-        {
-            "random",
-            Random::default_params(),
-            Random::param_defs(),
-            [](State* s, int d, GameHistory& h, SearchContext& c){
-                return Random::search(s, d, h, c);
+                return MiniMax::search_pvs(s, d, h, c);
             }
         },
     };

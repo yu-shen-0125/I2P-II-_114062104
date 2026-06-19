@@ -658,9 +658,7 @@ def discover_engines(build_dir):
         List of (name, full_path) tuples, sorted by name.
     """
     results = []
-    seen_names = set()
-    project_dir = os.path.dirname(build_dir)
-    dirs_to_scan = [build_dir, os.path.join(project_dir, "local_build")]
+    dirs_to_scan = [build_dir]
 
     # Also scan common subdirectories
     for subdir in ("Release", "Debug", "baselines"):
@@ -684,10 +682,6 @@ def discover_engines(build_dir):
                 if os.path.isfile(full):
                     name = os.path.splitext(entry)[0]
                     if "uci" in name.lower() or "ubgi" in name.lower():
-                        key = name.lower()
-                        if key in seen_names:
-                            continue
-                        seen_names.add(key)
                         results.append((name, full))
         except OSError:
             continue
