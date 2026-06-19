@@ -792,7 +792,33 @@ std::string State::cell_display(int row, int col) const{
 
 /* === Repetition: chess 3-fold rule === */
 bool State::check_repetition(const GameHistory& history, int& out_score) const {
-    (void)history;
-    (void)out_score;
-    return false;
+    // The position being evaluated has not been pushed yet.  Two previous
+    // occurrences therefore mean that entering it now causes threefold
+    // repetition.
+    if(history.count(this->hash()) < 2){
+        return false;
+    }
+
+    int self_material = 0;
+    int opp_material = 0;
+    for(int r = 0; r < BOARD_H; ++r){
+        for(int c = 0; c < BOARD_W; ++c){
+            self_material += simple_material[
+                static_cast<int>(this->board.board[this->player][r][c])];
+            opp_material += simple_material[
+                static_cast<int>(this->board.board[1 - this->player][r][c])];
+        }
+    }
+
+    // Contempt from the side-to-move perspective: the materially stronger
+    // side avoids a draw, while the weaker side is allowed to seek one.
+    constexpr int REPETITION_CONTEMPT = 100;
+    if(self_material > opp_material){
+        out_score = -REPETITION_CONTEMPT;
+    }else if(self_material < opp_material){
+        out_score = REPETITION_CONTEMPT;
+    }else{
+        out_score = 0;
+    }
+    return true;
 }
