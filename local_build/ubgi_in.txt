@@ -1,6 +1,0 @@
-ubgi
-isready
-position startpos
-go depth 1
-quit
-
