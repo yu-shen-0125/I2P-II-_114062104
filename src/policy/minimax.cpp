@@ -568,7 +568,7 @@ int MiniMax::eval_pvs(
  * MiniMax — search_pvs
  *
  * Root search using full-featured PVS.
- * Creates fresh PVSContext each call; TT is global and persists.
+ * Reuses move-ordering heuristics across iterative-deepening passes.
  *============================================================*/
 SearchResult MiniMax::search_pvs(
     State *state,
@@ -581,11 +581,25 @@ SearchResult MiniMax::search_pvs(
     SearchResult result;
     result.depth = depth;
 
-    PVSContext pctx;
-    pctx.reset();
-
     if(!state->legal_actions.size()){
         state->get_legal_actions();
+    }
+
+    uint64_t root_hash = state->hash();
+    static thread_local PVSContext pctx;
+    static thread_local uint64_t heuristic_root_hash = 0;
+    static thread_local bool heuristic_ready = false;
+    if(!heuristic_ready || depth <= 1 || heuristic_root_hash != root_hash){
+        pctx.reset();
+        heuristic_root_hash = root_hash;
+        heuristic_ready = true;
+    }else{
+        // Preserve relative history ordering without allowing values to grow
+        // without bound over many iterative-deepening passes.
+        for(auto& player_hist : pctx.history)
+            for(auto& from_hist : player_hist)
+                for(int& value : from_hist)
+                    value /= 2;
     }
 
     int best_score = M_MAX - 10;
@@ -597,7 +611,6 @@ SearchResult MiniMax::search_pvs(
     // Reuse the previous iterative-deepening result at the root. Searching
     // that move first improves PVS cutoffs and makes better use of movetime.
     Move root_tt_move = {};
-    uint64_t root_hash = state->hash();
     TTEntry* root_tte = tt_probe(root_hash);
     if(root_tte->flag != TT_EMPTY && root_tte->hash == root_hash){
         root_tt_move = root_tte->best;
