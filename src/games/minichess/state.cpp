@@ -57,71 +57,6 @@ static int king_tropism(
     return 0;
 }
 
-static bool on_board(int r, int c){
-    return r >= 0 && r < BOARD_H && c >= 0 && c < BOARD_W;
-}
-
-static int nonking_material(const Board& board, int owner){
-    int score = 0;
-    for(int r = 0; r < BOARD_H; ++r)
-        for(int c = 0; c < BOARD_W; ++c){
-            int piece = board.board[owner][r][c];
-            if(piece != 6) score += simple_material[piece];
-        }
-    return score;
-}
-
-// Number of enemy-king escape squares removed by board edges, its own pieces,
-// or our attacks. Used only while clearly ahead in material.
-static int king_net_score(const Board& board, int attacker){
-    bool attacked[BOARD_H][BOARD_W] = {};
-    auto mark = [&](int r, int c){ if(on_board(r, c)) attacked[r][c] = true; };
-    int defender = 1 - attacker;
-    int king_r = -1, king_c = -1;
-
-    static const int knight_dr[8] = {1,1,-1,-1,2,2,-2,-2};
-    static const int knight_dc[8] = {2,-2,2,-2,1,-1,1,-1};
-    static const int ray_dr[8] = {0,0,1,-1,1,1,-1,-1};
-    static const int ray_dc[8] = {1,-1,0,0,1,-1,1,-1};
-
-    for(int r = 0; r < BOARD_H; ++r){
-        for(int c = 0; c < BOARD_W; ++c){
-            if(board.board[defender][r][c] == 6){ king_r = r; king_c = c; }
-            int piece = board.board[attacker][r][c];
-            if(!piece) continue;
-            if(piece == 1){
-                int forward = attacker == 0 ? -1 : 1;
-                mark(r + forward, c - 1); mark(r + forward, c + 1);
-            }else if(piece == 3){
-                for(int d = 0; d < 8; ++d) mark(r + knight_dr[d], c + knight_dc[d]);
-            }else if(piece == 6){
-                for(int d = 0; d < 8; ++d) mark(r + ray_dr[d], c + ray_dc[d]);
-            }else{
-                int begin = piece == 4 ? 4 : 0;
-                int end = piece == 2 ? 4 : 8;
-                for(int d = begin; d < end; ++d){
-                    int nr = r + ray_dr[d], nc = c + ray_dc[d];
-                    while(on_board(nr, nc)){
-                        attacked[nr][nc] = true;
-                        if(board.board[0][nr][nc] || board.board[1][nr][nc]) break;
-                        nr += ray_dr[d]; nc += ray_dc[d];
-                    }
-                }
-            }
-        }
-    }
-    if(king_r < 0) return 0;
-
-    int safe_escapes = 0;
-    for(int d = 0; d < 8; ++d){
-        int r = king_r + ray_dr[d], c = king_c + ray_dc[d];
-        if(on_board(r, c) && !board.board[defender][r][c] && !attacked[r][c]){
-            ++safe_escapes;
-        }
-    }
-    return 8 - safe_escapes;
-}
-
 /*============================================================
  * evaluate() — runtime-selectable eval strategy
  *============================================================*/
@@ -204,16 +139,6 @@ int State::evaluate(
     }
 
     int bonus = 0;
-
-    int self_material = nonking_material(this->board, this->player);
-    int oppn_material = nonking_material(this->board, 1 - this->player);
-    constexpr int CLEAR_ADVANTAGE = 6;
-    constexpr int KING_NET_WEIGHT = 2;
-    if(self_material >= oppn_material + CLEAR_ADVANTAGE){
-        bonus += KING_NET_WEIGHT * king_net_score(this->board, this->player);
-    }else if(oppn_material >= self_material + CLEAR_ADVANTAGE){
-        bonus -= KING_NET_WEIGHT * king_net_score(this->board, 1 - this->player);
-    }
 
     /* === Mobility bonus === */
     if(use_mobility){
